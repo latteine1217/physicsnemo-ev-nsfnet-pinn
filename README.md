@@ -71,7 +71,13 @@ mkdir -p checkpoints outputs data
 ├── ⚙️ conf/config.yaml          # Hydra configuration
 ├── 📋 requirements.txt          # Python dependencies
 ├── 🚀 run_training.sh          # Training execution script
-└── 📖 AGENTS.md               # Development guidelines
+├── 📖 AGENTS.md               # Development guidelines
+└── 🧪 simple/                 # Simple test version for P100 GPUs
+    ├── physicsnemo_train_simple.py
+    ├── conf/config_simple.yaml
+    ├── run_simple_training.sh
+    ├── train_simple.sh
+    └── README_SIMPLE.md
 ```
 
 ## ⚙️ Configuration

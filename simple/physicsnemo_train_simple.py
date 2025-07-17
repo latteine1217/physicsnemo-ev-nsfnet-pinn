@@ -9,6 +9,10 @@ from physicsnemo.launch.utils import load_checkpoint, save_checkpoint
 
 from physicsnemo_solver import PhysicsNeMoPINNSolver
 
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 
 def create_trainer(cfg: DictConfig, solver: PhysicsNeMoPINNSolver):
     """Create PhysicsNeMo trainer with distributed support"""

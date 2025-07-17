@@ -35,7 +35,7 @@ echo "Job start: $(date)"
 
 # Run distributed training with torchrun
 time torchrun --nproc_per_node=2 --nnodes=1 --node_rank=0 \
-        physicsnemo_train_simple.py
+        physicsnemo_train_simple.py --config-path=conf --config-name=config_simple
 
 echo "Job end: $(date)"
 

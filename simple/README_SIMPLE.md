@@ -31,7 +31,7 @@ nvidia-smi
 
 ### 2. Install Dependencies 📦
 ```bash
-pip install -r requirements.txt
+cd .. && pip install -r requirements.txt
 ```
 
 ### 3. Run Simple Training 🏃‍♀️
@@ -48,20 +48,20 @@ sbatch run_simple_training.sh
 ./train_simple.sh
 ```
 
-## Scripts Available
+## Scripts Available 📜
 
-### SLURM Version: `run_simple_training.sh`
+### SLURM Version: `run_simple_training.sh` 🎯
 - Follows the same format as `~/Documents/coding/ldc_pinns/NSFnet/ev-NSFnet/train.sh`
 - Uses SBATCH directives for r740 partition
 - 2-hour time limit for testing
 - Automatic job output logging
 
-### Direct Version: `train_simple.sh`
+### Direct Version: `train_simple.sh` 🚀
 - For servers without SLURM
 - Same torchrun command structure
 - Immediate execution
 
-## Files Created
+## Files Created 📁
 
 ### New Files for Simple Testing
 - `physicsnemo_train_simple.py` - Simplified training script
