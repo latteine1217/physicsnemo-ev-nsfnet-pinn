@@ -1,27 +1,27 @@
-# PhysicsNeMo EV-NSFnet PINN - Simple Test Version
+# PhysicsNeMo EV-NSFnet PINN - Simple Test Version 🧪
 
-## Overview
+## Overview 📋
 This is a simplified test version of the PhysicsNeMo EV-NSFnet PINN project, specifically optimized for testing on a Dell R740 server with dual P100 GPUs.
 
-**Developed by**: opencode + GitHub Copilot
+**Developed by**: opencode + GitHub Copilot 🤖
 
-## Key Simplifications for Testing
+## Key Simplifications for Testing ⚡
 
-### Reduced Complexity
+### Reduced Complexity 🔧
 - **Training epochs**: 2,000 (vs 3,000,000 in full version)
 - **Network size**: Smaller networks (4 layers, 60 nodes vs 6 layers, 80 nodes)
 - **Data points**: 50,000 interior points (vs 120,000)
 - **Single stage**: No multi-stage progressive training
 
-### P100 GPU Optimizations
+### P100 GPU Optimizations 🚀
 - **Mixed precision**: Enabled to utilize Tensor Cores
 - **Memory management**: Optimized for 16GB P100 memory
 - **Gradient accumulation**: Simulates larger batch sizes
 - **NCCL backend**: Optimized for dual-GPU communication
 
-## Quick Start
+## Quick Start 🏃‍♂️
 
-### 1. Server Setup (Dell R740 with dual P100)
+### 1. Server Setup (Dell R740 with dual P100) 🖥️
 ```bash
 # Verify GPU setup
 nvidia-smi
@@ -29,12 +29,12 @@ nvidia-smi
 # Should show 2x Tesla P100-PCIE-16GB
 ```
 
-### 2. Install Dependencies
+### 2. Install Dependencies 📦
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Run Simple Training
+### 3. Run Simple Training 🏃‍♀️
 
 **Option A: Using SLURM (if available)**
 ```bash

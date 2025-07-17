@@ -39,3 +39,18 @@
 - README.md should note development by opencode + GitHub Copilot
 - Use multi-stage training with decreasing alpha_evm values
 - Maintain dual-network architecture for main flow + eddy viscosity
+
+## Git 規則
+- 不要主動git
+- 在被告知要建立github repository時，建立.gitignore文件
+
+## markdwon檔案原則（此處不包含AGENTS.md）
+- README.md 中必須要標示本專案使用opencode+Github Copilot開發
+- 避免建立過多的markdown文件來描述專案
+- markdown文件可以多使用emoji來增加豐富度
+
+## 程式建構規則
+- 程式碼以邏輯清晰、精簡、易讀為主
+- 將各種獨立功能獨立成一個定義函數或是檔案
+- 使用註解在功能前面簡略說明
+- 若程式有輸出需求，讓輸出能一目瞭然並使用'==='或是'---'來做分隔

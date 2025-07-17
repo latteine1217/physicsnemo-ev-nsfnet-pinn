@@ -164,7 +164,7 @@ class CavityDataset(Dataset):
             return reference_dict
             
         except (FileNotFoundError, KeyError):
-            print(f"Reference data not found for Re={self.reynolds_number}")
+            # Reference data not found for Re={self.reynolds_number}
             return {}
     
     def __len__(self) -> int:

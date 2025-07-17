@@ -1,17 +1,17 @@
-# PhysicsNeMo PINN Integration
+# PhysicsNeMo PINN Integration 🔬
 
 This project integrates your Physics-Informed Neural Network (PINN) implementation with NVIDIA PhysicsNeMo for enhanced performance, scalability, and optimization.
 
-## Overview
+## Overview 📋
 
 The integration provides:
-- **Optimized Neural Networks**: PhysicsNeMo's FullyConnected layers with built-in optimizations
-- **Distributed Training**: Multi-GPU training with PhysicsNeMo's DistributedManager
-- **Physics Equations**: Symbolic PDE formulation using PhysicsNeMo's equation framework
-- **Advanced Data Handling**: Optimized data pipelines for cavity flow datasets
-- **Professional Logging**: Comprehensive logging and checkpointing system
+- **Optimized Neural Networks**: PhysicsNeMo's FullyConnected layers with built-in optimizations ⚡
+- **Distributed Training**: Multi-GPU training with PhysicsNeMo's DistributedManager 🚀
+- **Physics Equations**: Symbolic PDE formulation using PhysicsNeMo's equation framework 🧮
+- **Advanced Data Handling**: Optimized data pipelines for cavity flow datasets 📊
+- **Professional Logging**: Comprehensive logging and checkpointing system 📝
 
-## Files
+## Files 📂
 
 ### Core PhysicsNeMo Components
 - `physicsnemo_net.py` - PhysicsNeMo-compatible neural network architectures
@@ -26,7 +26,7 @@ The integration provides:
 - `requirements.txt` - Python dependencies
 - `run_training.sh` - Training execution script
 
-## Installation
+## Installation 📦
 
 1. Install PhysicsNeMo:
 ```bash
@@ -38,7 +38,7 @@ pip install nvidia-physicsnemo
 pip install -r requirements.txt
 ```
 
-## Usage
+## Usage 🚀
 
 ### Single GPU Training
 ```bash

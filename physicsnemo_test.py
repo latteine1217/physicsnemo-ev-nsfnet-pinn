@@ -79,7 +79,7 @@ def test_model(cfg: DictConfig) -> None:
                     logger.info(f"  Error U: {errors['error_u']:.3f}%")
                     logger.info(f"  Error V: {errors['error_v']:.3f}%") 
                     logger.info(f"  Error P: {errors['error_p']:.3f}%")
-                    logger.info("-" * 40)
+                    logger.info("=" * 40)
                     
             except FileNotFoundError:
                 if dist.rank == 0:
