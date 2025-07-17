@@ -1,0 +1,64 @@
+defaults:
+  - _self_
+
+# Model configuration - optimized for testing
+reynolds_number: 5000
+alpha_evm: 0.01
+alpha_boundary: 10.0
+alpha_equation: 1.0
+alpha_evm_constraint: 0.1
+
+# Network architectures - smaller for faster testing
+main_net:
+  nr_layers: 4    # Reduced from 6
+  layer_size: 60  # Reduced from 80
+  activation_fn: "tanh"
+
+evm_net:
+  nr_layers: 3    # Reduced from 4
+  layer_size: 30  # Reduced from 40
+  activation_fn: "tanh"
+
+# Data configuration - reduced for faster testing
+data_dir: "./data"
+num_interior_points: 50000   # Reduced from 120000
+num_boundary_points: 800     # Reduced from 1000
+
+# Training configuration - optimized for P100 GPUs
+optimizer:
+  lr: 1e-3
+  weight_decay: 0.0
+
+scheduler:
+  enabled: true    # Enable for better convergence
+  gamma: 0.98      # Slightly more aggressive decay
+
+# Simple training configuration for testing
+simple_training:
+  num_epochs: 2000        # Much fewer epochs for testing
+  lr: 1e-3
+  log_freq: 50           # More frequent logging
+  checkpoint_freq: 500   # Less frequent checkpointing
+
+# Logging and checkpointing
+log_freq: 50              # More frequent logging for testing
+checkpoint_freq: 500      # Less frequent checkpointing for testing
+checkpoint_dir: "./checkpoints_simple"
+checkpoint_path: null
+
+# Distributed training - optimized for dual P100
+distributed:
+  backend: "nccl"
+
+# GPU memory optimization for P100 (16GB each)
+gpu_optimization:
+  mixed_precision: true     # Use FP16 to save memory
+  gradient_accumulation: 2  # Accumulate gradients to simulate larger batch
+  max_memory_per_gpu: 14    # Reserve 2GB for system (GB)
+
+# Hydra configuration
+hydra:
+  run:
+    dir: ./outputs_simple/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  job:
+    chdir: false

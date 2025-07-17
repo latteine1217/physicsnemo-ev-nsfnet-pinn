@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyTorch
+*.pth
+*.ckpt
+checkpoints/
+checkpoints_simple/
+
+# Hydra
+.hydra/
+outputs/
+outputs_simple/
+
+# Data
+data/
+*.npy
+*.h5
+*.hdf5
+
+# System
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+job_*.out
+job_*.err
+
+# Environment
+.env
+.venv
+env/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
