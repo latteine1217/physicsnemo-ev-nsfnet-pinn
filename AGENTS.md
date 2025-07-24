@@ -6,8 +6,11 @@
 - **框架**: NVIDIA PhysicsNeMo 分散式訓練與最佳化
 - **開發者**: opencode + GitHub Copilot
 
+## 硬體環境規則
+本專案使用Dell R740伺服器運行（Intel Xeon Gold 5118 12 Core*2/ 48 threads, 112GB memory, Nvidia P100 16GB *2）。請根據此硬體配置來審查以及設計錯誤解決方式。不要使用本地python做執行測試，需要測試的檔案請寫好後讓我自己手動運行。
+
 ## 建構/測試/檢查指令
-- **訓練**: `python physicsnemo_train.py` 或 `./run_training.sh [num_gpus]`
+- **訓練**: `python physicsnemo_train.py` 或 `./train.sh `
 - **測試**: `python physicsnemo_test.py`
 - **單一測試**: 使用 `pytest physicsnemo_test.py::test_function_name` 執行特定測試
 - **程式碼檢查**: `black .` 和 `isort .` (可選開發工具)
