@@ -1,13 +1,14 @@
 # Copyright (c) 2025 NVIDIA Corporation. All Rights Reserved.
 import torch
 import torch.nn as nn
-from physicsnemo.models.mlp.fully_connected import FullyConnected
-from physicsnemo.models.layers.activation import Activation
-from typing import List, Optional
+from physicsnemo.models.mlp import FullyConnected
+from physicsnemo.models.activations import Activation
+from physicsnemo.models.model import Model
+from typing import List, Dict, Optional
 
 
-class PhysicsNeMoNet(nn.Module):
-    """PhysicsNeMo compatible neural network for PINN cavity flow simulation"""
+class PhysicsNeMoPINNNet(Model):
+    """PhysicsNeMo 標準 PINN 神經網路"""
     
     def __init__(
         self,
@@ -16,32 +17,33 @@ class PhysicsNeMoNet(nn.Module):
         nr_layers: int = 6,
         layer_size: int = 80,
         activation_fn: str = "tanh",
+        **kwargs
     ):
         super().__init__()
         
         self.input_keys = input_keys
         self.output_keys = output_keys
         
-        # Main network for velocity and pressure
+        # 使用正確的 PhysicsNeMo FullyConnected API
         self.net = FullyConnected(
-            in_features=len(input_keys),
-            out_features=len(output_keys),
-            num_layers=nr_layers,
+            input_dim=len(input_keys),
+            output_dim=len(output_keys),
+            nr_layers=nr_layers,
             layer_size=layer_size,
-            activation_fn=Activation(activation_fn),
+            activation_fn=activation_fn,
             adaptive_activations=False,
             weight_norm=True,
         )
         
-    def forward(self, input_dict):
-        """Forward pass compatible with PhysicsNeMo"""
-        # Concatenate inputs
-        x = torch.cat([input_dict[key] for key in self.input_keys], dim=-1)
+    def forward(self, input_vars: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """PhysicsNeMo 標準前向傳播"""
+        # 按順序拼接輸入
+        x = torch.cat([input_vars[key] for key in self.input_keys], dim=-1)
         
-        # Forward through network
+        # 神經網路前向傳播
         output = self.net(x)
         
-        # Split outputs into dictionary
+        # 分割輸出為字典格式
         output_dict = {}
         for i, key in enumerate(self.output_keys):
             output_dict[key] = output[:, i:i+1]
@@ -49,67 +51,98 @@ class PhysicsNeMoNet(nn.Module):
         return output_dict
 
 
-class PhysicsNeMoEVMNet(nn.Module):
-    """PhysicsNeMo compatible eddy viscosity model network"""
+class PhysicsNeMoEVMNet(Model):
+    """PhysicsNeMo EVM (渦黏度) 網路"""
     
     def __init__(
         self,
         input_keys: List[str] = ["x", "y"],
-        output_keys: List[str] = ["evm"],
-        nr_layers: int = 4,
+        output_keys: List[str] = ["nu_t"],
+        nr_layers: int = 6,
         layer_size: int = 40,
         activation_fn: str = "tanh",
+        **kwargs
     ):
         super().__init__()
         
         self.input_keys = input_keys
         self.output_keys = output_keys
         
-        # EVM network
-        self.net = FullyConnected(
-            in_features=len(input_keys),
-            out_features=len(output_keys),
-            num_layers=nr_layers,
+        # EVM 網路使用較小的架構
+        self.evm_net = FullyConnected(
+            input_dim=len(input_keys),
+            output_dim=len(output_keys),
+            nr_layers=nr_layers,
             layer_size=layer_size,
-            activation_fn=Activation(activation_fn),
+            activation_fn=activation_fn,
             adaptive_activations=False,
             weight_norm=True,
         )
         
-    def forward(self, input_dict):
-        """Forward pass for EVM network"""
-        # Concatenate inputs
-        x = torch.cat([input_dict[key] for key in self.input_keys], dim=-1)
+    def forward(self, input_vars: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """EVM 網路前向傳播"""
+        # 拼接輸入
+        x = torch.cat([input_vars[key] for key in self.input_keys], dim=-1)
         
-        # Forward through network
-        output = self.net(x)
+        # EVM 網路前向傳播
+        output = self.evm_net(x)
         
-        # Split outputs into dictionary
+        # 分割輸出 - 應用絕對值確保正的渦黏度
         output_dict = {}
         for i, key in enumerate(self.output_keys):
-            output_dict[key] = output[:, i:i+1]
+            output_dict[key] = torch.abs(output[:, i:i+1])
             
         return output_dict
 
 
-class CombinedPhysicsNeMoNet(nn.Module):
-    """Combined PhysicsNeMo network for PINN with EVM"""
+class PhysicsNeMoCombinedPINNModel(Model):
+    """PhysicsNeMo 結合 PINN + EVM 模型"""
     
     def __init__(
         self,
-        main_net_config: dict,
-        evm_net_config: dict,
+        pinn_config: Dict,
+        evm_config: Dict,
+        **kwargs
     ):
         super().__init__()
         
-        self.main_net = PhysicsNeMoNet(**main_net_config)
-        self.evm_net = PhysicsNeMoEVMNet(**evm_net_config)
+        # 主 PINN 網路
+        self.pinn_net = PhysicsNeMoPINNNet(**pinn_config)
         
-    def forward(self, input_dict):
-        """Combined forward pass"""
-        main_output = self.main_net(input_dict)
-        evm_output = self.evm_net(input_dict)
+        # EVM 網路
+        self.evm_net = PhysicsNeMoEVMNet(**evm_config)
         
-        # Combine outputs
-        output_dict = {**main_output, **evm_output}
-        return output_dict
+        # 結合所有輸入和輸出鍵
+        self.input_keys = list(set(self.pinn_net.input_keys + self.evm_net.input_keys))
+        self.output_keys = self.pinn_net.output_keys + self.evm_net.output_keys
+        
+    def forward(self, input_vars: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """結合模型前向傳播"""
+        # PINN 網路預測
+        pinn_output = self.pinn_net(input_vars)
+        
+        # EVM 網路預測
+        evm_output = self.evm_net(input_vars)
+        
+        # 結合輸出
+        combined_output = {**pinn_output, **evm_output}
+        
+        return combined_output
+    
+    def get_pinn_output(self, input_vars: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """僅獲取 PINN 網路輸出"""
+        return self.pinn_net(input_vars)
+    
+    def get_evm_output(self, input_vars: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """僅獲取 EVM 網路輸出"""
+        return self.evm_net(input_vars)
+    
+    def freeze_evm(self):
+        """凍結 EVM 網路參數"""
+        for param in self.evm_net.parameters():
+            param.requires_grad = False
+    
+    def unfreeze_evm(self):
+        """解凍 EVM 網路參數"""
+        for param in self.evm_net.parameters():
+            param.requires_grad = True

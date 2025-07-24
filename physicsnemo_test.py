@@ -3,7 +3,7 @@ import torch
 import hydra
 from omegaconf import DictConfig
 from physicsnemo.distributed import DistributedManager
-from physicsnemo.launch.logging import LaunchLogger, PythonLogger, initialize_loggers
+from physicsnemo.utils.loggers import get_logger
 
 from physicsnemo_solver import PhysicsNeMoPINNSolver
 
@@ -16,9 +16,8 @@ def test_model(cfg: DictConfig) -> None:
     DistributedManager.initialize()
     dist = DistributedManager()
     
-    # Initialize loggers
-    initialize_loggers()
-    logger = PythonLogger("test")
+    # Get PhysicsNeMo logger
+    logger = get_logger(__name__)
     
     if dist.rank == 0:
         logger.info("Starting PhysicsNeMo PINN testing")
