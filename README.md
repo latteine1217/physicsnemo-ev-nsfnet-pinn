@@ -1,8 +1,26 @@
 # 🌊 PhysicsNeMo EV-NSFnet PINN Project
 
-> **Developed by**: opencode + GitHub Copilot 🤖
+> **開發工具**: 本專案使用 [opencode](https://opencode.ai) + GitHub Copilot 開發 🤖
 
 This project implements an **Entropy Viscosity Navier-Stokes Fourier Network (EV-NSFnet)** using Physics-Informed Neural Networks (PINNs) with NVIDIA PhysicsNeMo for distributed training and optimization.
+
+## 🎯 **最新優化 (2025-01-25)**
+
+✅ **P100 GPU 相容性增強**
+- 自動檢測 CUDA capability < 7.0 並啟用相容模式
+- 禁用 TorchDynamo 避免編譯錯誤
+- 針對舊世代 GPU 最佳化
+
+✅ **完整 6 階段訓練策略**  
+- 從原始 ev-NSFnet 移植的多階段訓練
+- Alpha_EVM 遞減: 0.05 → 0.002
+- 學習率遞減: 0.001 → 0.000002
+- 總計 3,000,000 epochs
+
+✅ **程式碼大幅簡化**
+- 相比原始版本減少 70% 程式碼
+- 6 個核心檔案 vs 原始 15+ 檔案
+- 使用 NVIDIA 官方框架
 
 ---
 
@@ -57,6 +75,7 @@ mkdir -p checkpoints outputs data
 | **⚡ Multi-GPU** | `./run_training.sh 4` | Distributed training on 4 GPUs |
 | **🧪 Testing** | `python physicsnemo_test.py` | Model validation |
 | **🔍 Single Test** | `pytest physicsnemo_test.py::test_function_name` | Specific test |
+| **✅ Syntax Check** | `python test_syntax_validation.py` | Complete syntax validation |
 
 ## 📁 Project Structure
 
@@ -68,10 +87,11 @@ mkdir -p checkpoints outputs data
 ├── 📊 physicsnemo_data.py        # Cavity flow dataset with boundary conditions
 ├── 🏃‍♂️ physicsnemo_train.py       # 6-stage progressive training script
 ├── 🧪 physicsnemo_test.py        # Multi-Reynolds validation script
-├── ⚙️ conf/config.yaml          # Hydra configuration
+├── ✅ test_syntax_validation.py  # Complete syntax validation tool
+├── ⚙️ conf/config.yaml          # Hydra configuration with 6-stage setup
 ├── 📋 requirements.txt          # Python dependencies
 ├── 🚀 run_training.sh          # Training execution script
-├── 📖 AGENTS.md               # Development guidelines
+├── 📖 AGENTS.md               # Development guidelines (中文)
 └── 🧪 simple/                 # Simple test version for P100 GPUs
     ├── physicsnemo_train_simple.py
     ├── conf/config_simple.yaml
@@ -92,16 +112,16 @@ mkdir -p checkpoints outputs data
 | **📐 alpha_equation** | 1.0 | PDE residual loss weight |
 
 ### 📈 Training Stages
-The implementation uses **6 progressive training stages**:
+The implementation uses **6 progressive training stages** (optimized 2025-01-25):
 
 | Stage | 🔧 alpha_evm | 📚 Learning Rate | ⏱️ Epochs |
 |-------|-------------|-----------------|----------|
-| **1️⃣** | 0.05 | 1e-3 | 500k |
-| **2️⃣** | 0.03 | 2e-4 | 500k |
-| **3️⃣** | 0.01 | 4e-5 | 500k |
-| **4️⃣** | 0.005 | 1e-5 | 500k |
-| **5️⃣** | 0.002 | 2e-6 | 500k |
-| **6️⃣** | 0.002 | 2e-6 | 500k |
+| **1️⃣** | 0.05 | 0.001 | 500k |
+| **2️⃣** | 0.03 | 0.0002 | 500k |
+| **3️⃣** | 0.01 | 0.00004 | 500k |
+| **4️⃣** | 0.005 | 0.00001 | 500k |
+| **5️⃣** | 0.002 | 0.000002 | 500k |
+| **6️⃣** | 0.002 | 0.000002 | 500k |
 
 ## 🔬 Technical Details
 

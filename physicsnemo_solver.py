@@ -9,6 +9,24 @@ from physicsnemo.models.module import Module
 from physicsnemo.distributed import DistributedManager
 from physicsnemo.utils.io import ValidateInput
 
+# P100 GPU 相容性設置
+if torch.cuda.is_available():
+    device_capability = torch.cuda.get_device_capability(0)
+    major, minor = device_capability
+    cuda_capability = major + minor * 0.1
+    
+    if cuda_capability < 7.0:  # P100 是 6.0
+        # 設置環境變數以避免 Triton 編譯器錯誤
+        os.environ.setdefault('TORCH_COMPILE_BACKEND', 'eager')
+        os.environ.setdefault('TORCHDYNAMO_DISABLE', '1')
+        
+        # 抑制 torch.compile 相關錯誤
+        try:
+            import torch._dynamo
+            torch._dynamo.config.suppress_errors = True
+        except ImportError:
+            pass
+
 from physicsnemo_net import CombinedPhysicsNeMoNet
 from physicsnemo_equations import NavierStokesEVM, EVMConstraint
 from physicsnemo_data import CavityDataset
