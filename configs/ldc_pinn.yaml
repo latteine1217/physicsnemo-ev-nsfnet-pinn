@@ -1,0 +1,115 @@
+# SPDX-FileCopyrightText: LDC-PINNs with PhysicsNeMo
+# SPDX-License-Identifier: Apache-2.0
+#
+# ==============================================================================
+# LDC-PINNs Configuration for PhysicsNeMo
+# Physics-Informed Neural Networks for Lid-Driven Cavity Flow
+# 基於NVIDIA PhysicsNeMo框架的配置文件
+# ==============================================================================
+
+# 物理參數
+physics:
+  Re: 3000                    # Reynolds number
+  nu: 3.333e-4                # Kinematic viscosity (1/Re)
+  rho: 1.0                    # Density
+  dim: 2                      # Spatial dimensions
+  time: false                 # Steady-state problem
+  cavity_size: 1.0            # Cavity size (1m x 1m)
+
+# 神經網路架構
+model:
+  type: "FullyConnected"      # 使用FullyConnected MLP
+  in_features: 2              # Input: (x, y)
+  out_features: 3             # Output: (u, v, p)
+  num_layers: 6               # 網路層數
+  layer_size: 512             # 每層神經元數量
+  activation: "SiLU"          # Swish activation function
+  
+  # 激活函數參數 (for advanced activations)
+  advanced_activation:
+    enabled: true
+    type: "TSA"               # TSA (Trainable Sinusoidal Activation)
+    alpha: 1.0                # TSA參數
+    frequency: 1.0            # TSA頻率
+
+# 幾何和採樣設置
+geometry:
+  domain:
+    type: "Rectangle"
+    bounds: [[-0.5, -0.5], [0.5, 0.5]]  # 正規化到[-0.5, 0.5] x [-0.5, 0.5]
+  
+  sampling:
+    boundary_points: 2000     # 邊界點數
+    interior_points: 4000     # 內部點數
+    batch_size: 1             # 批次大小
+    num_workers: 1            # 資料載入器工作進程數
+
+# 邊界條件
+boundary_conditions:
+  no_slip_walls:              # 無滑移邊界 (bottom, left, right walls)
+    u: 0.0                    # u velocity = 0
+    v: 0.0                    # v velocity = 0
+    weight: 1.0               # BC權重
+  
+  moving_lid:                 # 移動頂壁
+    u: 1.0                    # u velocity = 1 (lid speed)
+    v: 0.0                    # v velocity = 0
+    weight: 1.0               # BC權重
+    edge_attenuation: 20.0    # 邊緣衰減係數
+
+# 物理損失權重
+loss_weights:
+  continuity: 1.0             # 連續方程權重
+  momentum_x: 1.0             # x動量方程權重
+  momentum_y: 1.0             # y動量方程權重
+  boundary: 1.0               # 邊界條件權重
+
+# 訓練參數
+training:
+  max_epochs: 10000           # 最大訓練epochs
+  optimizer: "Adam"
+  learning_rate: 1.0e-3       # 初始學習率
+  weight_decay: 0.0           # 權重衰減
+  
+  # 學習率調度器
+  scheduler:
+    type: "LambdaLR"
+    decay_rate: 0.9999871767586216  # 每步衰減率
+  
+  # 檢查點和輸出
+  checkpoint_freq: 1000       # 檢查點保存頻率
+  plot_freq: 1000             # 結果繪圖頻率
+  log_freq: 100               # 日誌輸出頻率
+
+# 推理設置
+inference:
+  grid_resolution: 512        # 推理網格解析度
+  domain: [[-0.5, 0.5], [-0.5, 0.5]]  # 推理域
+
+# 輸出和保存
+outputs:
+  save_dir: "./outputs"       # 輸出目錄
+  save_checkpoints: true      # 是否保存檢查點
+  save_plots: true            # 是否保存圖像
+  plot_variables: ["u", "v", "p", "u_magnitude"]  # 繪圖變數
+
+# 分布式訓練
+distributed:
+  enabled: false              # 是否啟用分布式訓練
+  backend: "nccl"             # 分布式後端
+
+# 硬體優化 (Tesla P100相容性)
+optimization:
+  torch_compile: false        # 禁用torch.compile (P100不支援)
+  mixed_precision: false      # 混合精度訓練
+  gradient_checkpointing: false # 梯度檢查點
+
+# 日誌設置
+logging:
+  level: "INFO"
+  file_logging: true
+  tensorboard: true
+  wandb:
+    enabled: false
+    project: "ldc-pinns-physicsnemo"
+    name: "ldc_re3000"

@@ -1,0 +1,16 @@
+# Re=5000實驗配置
+experiment:
+  name: "LDC_PINN_Re5000_Experiment"
+  description: "High Reynolds Number Lid-Driven Cavity Flow Experiment"
+  seed: 42
+
+physics:
+  reynolds_number: 5000
+  
+  evm:
+    alpha_evm: 0.08              # Re=5000需要更高的EVM權重
+    beta: 25.0                   # 增強人工粘滯度
+
+# 其他參數繼承default.yaml
+_defaults:
+  - default

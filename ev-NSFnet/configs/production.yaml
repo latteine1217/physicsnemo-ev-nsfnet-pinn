@@ -1,0 +1,115 @@
+experiment_name: "NSFnet_Re5000_Production"
+description: "高精度Physics-Informed Neural Network for Re=5000 Lid-Driven Cavity Flow"
+
+network:
+  layers: 6
+  layers_1: 4
+  hidden_size: 80
+  hidden_size_1: 40
+  # 精細配置每層神經元數量（可選）
+  # hidden_sizes: [80, 80, 60, 60, 40, 40]      # 主網路6層的神經元數量
+  # hidden_sizes_1: [40, 30, 30, 20]           # EVM網路4層的神經元數量
+  # 注意：如果提供hidden_sizes，其長度必須等於對應的layers數量
+  # 首/末層縮放與EVM激活
+  first_layer_scale_main: 1.0   # 啟用LAAF時放緩首層縮放，避免疊加過大
+  last_layer_scale_main: 0.5
+  first_layer_scale_evm: 1.0
+  last_layer_scale_evm: 0.5
+  evm_output_activation: abs_cap
+  # Activations
+  activation_main: laaf   # 主網啟用 Layer-wise LAAF
+  activation_evm: tanh    # EVM 保持 tanh
+  laaf_init_scale: 1.0    # a 初始值
+  laaf_max_scale: 20.0    # a 上限，避免暴衝
+  laaf_reg_lambda: 1.0e-4 # LAAF 輕度正則
+
+training:
+  N_f: 120000
+  batch_size: null  # 全批次訓練
+  checkpoint_freq: 10000       # 檢查點保存頻率
+  log_tips: true               # 啟用訓練提示
+  # 採樣排序與PDE距離權重
+  sort_by_boundary_distance: false   # 已在loss引入距離權重，預設關閉排序以節省前處理
+  pde_distance_weighting: true       # 啟用PDE距離權重 w(d)
+  pde_distance_w_min: 0.2            # 權重下限，避免遠區為0
+  pde_distance_tau: 0.2              # 距離尺度 (越小越聚焦邊界)
+  training_stages:
+    - [0.05, 200000, 1e-3, Constant]            # Stage 1
+    - [0.01, 200000, 2e-4, Constant]            # Stage 2
+    - [0.005, 200000, 4e-5, Constant]           # Stage 3
+    - [0.002, 200000, 1e-5, Constant]           # Stage 4
+    - [0.001, 300000, 2e-6, Constant]           # Stage 5
+  # Per-Stage AdamW weight decay (length must equal stages)
+  weight_decay_stages: [1.0e-5, 5.0e-6, 5.0e-6, 2.0e-6, 0.0]
+
+  # SGDR scheduler parameters (optional)
+  sgdr:
+    warmup_epochs: 1000     # 緩啟動步數（每stage計數）
+    T_0: 10000              # 第一個週期長度（不含warmup）
+    T_mult: 2               # 週期倍增
+    start_factor: 0.1       # 暖啟動起始比例
+    end_factor: 1.0         # 暖啟動結束比例
+    eta_min: 1e-6
+
+  # L-BFGS相關配置
+  lbfgs:
+    enabled_in_distributed: false      # 啟用分佈式L-BFGS
+    
+    # 階段控制：從Stage 3開始才啟用L-BFGS
+    enable_from_stage: 3
+    
+    # 放寬的觸發條件：分階段視窗+改善率
+    trigger_window_per_stage: [5000, 7500, 10000]
+    min_improve_pct_per_stage: [0.02, 0.015, 0.01]  
+    ema_gamma: 0.95
+    
+    # 簡化的梯度條件
+    use_simple_grad_check: true
+    grad_median_abs_thresh: 0.002      # 放寬到2e-3
+    grad_relative_factor: 0.02         # 放寬到2%
+    grad_cos_ema_thresh: 0.9
+    
+    # 放寬的物理條件
+    alpha_evm_threshold: 0.02          # 放寬到0.02
+    cap_ratio_threshold: 0.7           # 放寬到0.7
+    
+    cooldown_steps: 5000
+    freeze_evm_during_lbfgs: true
+    # L-BFGS 段參數（分散式友善 - 縮短執行時間）
+    max_outer_steps: 50
+    timeout_seconds: 300
+    max_iter: 10
+    history_size: 20
+    tolerance_grad: 1e-6
+    tolerance_change: 1e-8
+    line_search_fn: "strong_wolfe"    # 線搜索方法
+    early_stop_patience: 8
+    early_stop_min_delta: 1e-4
+    checkpoint_before_lbfgs: true     # L-BFGS前自動保存
+
+physics:
+  Re: 3000
+  alpha_evm: 0.05
+  beta: 20.0
+  bc_weight: 10.0
+  eq_weight: 1.0
+
+supervision:
+  enabled: true
+  data_points: 1  # 数据监督点数量，0表示不使用监督数据
+  data_path: "data/cavity_Re3000_256_Uniform.mat"
+  weight: 5.0     # 监督数据权重
+  random_seed: 42 # 确保可重现性
+
+system:
+  device: "auto"
+  precision: "float32"
+  tensorboard_enabled: true
+  tensorboard_interval: 1000   # 每隔多少個epochs寫入一次TB（降低I/O）
+  timing_sync_interval: 1000   # GPU同步與時間估算間隔（降低頻繁同步）
+  log_level: "INFO"
+  memory_limit_gb: 14.0
+  gradient_clip_norm: 1.0
+  memory_cleanup_freq: 100
+  epoch_times_limit: 1000
+  ddp_broadcast_buffers: false # 關閉DDP buffer同步以減少開銷（無BN時建議關閉）

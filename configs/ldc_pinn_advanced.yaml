@@ -1,0 +1,178 @@
+# SPDX-FileCopyrightText: LDC-PINNs with PhysicsNeMo
+# SPDX-License-Identifier: Apache-2.0
+#
+# ==============================================================================
+# 進階LDC-PINNs配置 - 完整PhysicsNeMo框架
+# 支援多階段訓練、人工粘滯性、TSA/LAAF激活函數
+# ==============================================================================
+
+# 物理參數
+physics:
+  Re: 3000                    # Reynolds數
+  nu: 3.333e-4                # 運動粘滯度 (1/Re)
+  rho: 1.0                    # 密度
+  dim: 2                      # 空間維度
+  time: false                 # 穩態問題
+  cavity_size: 1.0            # 腔體大小 (1m x 1m)
+  alpha_evm: 0.03             # 初始熵殘差權重
+  beta: 1.0                   # 人工粘滯度上限係數
+
+# 神經網路架構
+model:
+  # 主網路配置 (u, v, p)
+  main_network:
+    type: "FullyConnected"
+    input_features: 2         # 輸入: (x, y)
+    output_features: 3        # 輸出: (u, v, p)
+    num_layers: 6             # 隱藏層數
+    layer_size: 80            # 每層神經元數
+  
+  # 熵殘差網路配置 (entropy residual)
+  entropy_network:
+    type: "FullyConnected"
+    input_features: 2         # 輸入: (x, y)
+    output_features: 1        # 輸出: entropy residual
+    num_layers: 4             # 隱藏層數
+    layer_size: 40            # 每層神經元數
+  
+  # 進階激活函數配置
+  advanced_activation:
+    enabled: true             # 啟用進階激活函數
+    type: "TSA"               # TSA | LAAF | ASA
+    freq_std: 1.0             # TSA頻率標準差
+    freq_mean: 0.0            # TSA頻率平均值
+    trainable_coeffs: true    # 訓練正弦/餘弦係數
+    initialization: "uniform"  # uniform | normal | xavier
+
+# 幾何和採樣設置
+geometry:
+  domain:
+    type: "Rectangle"
+    bounds: [[-0.5, -0.5], [0.5, 0.5]]  # 正規化域 [-0.5, 0.5]²
+  
+  sampling:
+    boundary_points: 2000     # 邊界點數
+    interior_points: 4000     # 內部點數
+    batch_size: 1             # 批次大小
+    num_workers: 1            # 數據載入器工作進程數
+
+# 邊界條件
+boundary_conditions:
+  no_slip_walls:              # 無滑移邊界 (底、左、右壁)
+    u: 0.0                    # u速度 = 0
+    v: 0.0                    # v速度 = 0
+    weight: 1.0               # 邊界條件權重
+  
+  moving_lid:                 # 移動頂壁
+    u: 1.0                    # u速度 = 1 (頂壁速度)
+    v: 0.0                    # v速度 = 0
+    weight: 1.0               # 邊界條件權重
+    edge_attenuation: 20.0    # 邊緣衰減係數
+
+# 物理損失權重
+loss_weights:
+  continuity: 1.0             # 連續方程權重
+  momentum_x: 1.0             # x動量方程權重
+  momentum_y: 1.0             # y動量方程權重
+  boundary: 10.0              # 邊界條件權重
+  entropy_residual: 1.0       # 熵殘差權重 (動態調整)
+
+# 多階段訓練配置
+training:
+  max_epochs: 50000           # 總訓練epochs (測試用，實際可設1,000,000)
+  
+  # 5階段訓練策略
+  stages:
+    - name: "Stage_1_Initial"
+      epochs: 10000           # 第1階段epochs
+      alpha_evm: 0.03         # 熵殘差權重
+      learning_rate: 1.0e-3   # 學習率
+      optimizer: "Adam"
+      use_lbfgs: false
+    
+    - name: "Stage_2_Refinement"
+      epochs: 10000           # 第2階段epochs
+      alpha_evm: 0.01         # 降低熵殘差權重
+      learning_rate: 8.0e-4   # 降低學習率
+      optimizer: "Adam"
+      use_lbfgs: false
+    
+    - name: "Stage_3_Mixed"
+      epochs: 10000           # 第3階段epochs
+      alpha_evm: 0.003        # 進一步降低熵殘差權重
+      learning_rate: 5.0e-4   # 進一步降低學習率
+      optimizer: "Mixed"      # 混合優化：60% Adam + 40% L-BFGS
+      use_lbfgs: true
+      lbfgs_ratio: 0.4        # L-BFGS佔比
+    
+    - name: "Stage_4_Precision"
+      epochs: 10000           # 第4階段epochs
+      alpha_evm: 0.001        # 精調熵殘差權重
+      learning_rate: 3.0e-4   # 精調學習率
+      optimizer: "Mixed"
+      use_lbfgs: true
+      lbfgs_ratio: 0.4
+    
+    - name: "Stage_5_Final"
+      epochs: 10000           # 第5階段epochs
+      alpha_evm: 0.0002       # 最終熵殘差權重
+      learning_rate: 1.0e-4   # 最終學習率
+      optimizer: "Mixed"
+      use_lbfgs: true
+      lbfgs_ratio: 0.5        # 提高L-BFGS佔比至50%
+  
+  # 標準訓練參數
+  weight_decay: 0.0           # 權重衰減
+  
+  # 檢查點和輸出頻率
+  checkpoint_freq: 1000       # 檢查點保存頻率
+  plot_freq: 500              # 結果繪圖頻率
+  log_freq: 100               # 日誌輸出頻率
+
+# 推理設置
+inference:
+  grid_resolution: 256        # 推理網格解析度
+  domain: [[-0.5, 0.5], [-0.5, 0.5]]  # 推理域
+
+# 輸出和保存
+outputs:
+  save_dir: "./outputs_advanced"  # 輸出目錄
+  save_checkpoints: true      # 保存檢查點
+  save_plots: true            # 保存圖像
+  plot_variables: ["u", "v", "p", "u_magnitude", "entropy_residual", "streamlines"]
+
+# 分布式訓練
+distributed:
+  enabled: false              # 分布式訓練（單GPU測試）
+  backend: "nccl"             # 分布式後端
+
+# 硬體優化 (Tesla P100相容性)
+optimization:
+  torch_compile: false        # 禁用torch.compile (P100不支援)
+  mixed_precision: false      # 混合精度訓練
+  gradient_checkpointing: false # 梯度檢查點
+  memory_efficient: true      # 記憶體高效模式
+
+# 日誌設置
+logging:
+  level: "INFO"
+  file_logging: true
+  tensorboard: true
+  advanced_metrics: true      # 記錄進階指標（激活函數統計等）
+  
+  # W&B設置 (可選)
+  wandb:
+    enabled: false
+    project: "ldc-pinns-advanced-physicsnemo"
+    name: "ldc_re3000_multistage_tsa"
+
+# 實驗設置
+experiment:
+  name: "LDC_Re3000_Advanced_PhysicsNeMo"
+  description: "完整PhysicsNeMo框架實作，包含多階段訓練、人工粘滯性、TSA激活函數"
+  
+  # 複現性設置
+  reproducibility:
+    seed: 42
+    deterministic: true
+    benchmark: false

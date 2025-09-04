@@ -1,0 +1,183 @@
+# =============================================================================
+# LDC-PINNs 預設配置檔案
+# Physics-Informed Neural Networks for Lid-Driven Cavity Flow
+# =============================================================================
+
+experiment:
+  name: "LDC_PINN_Default"
+  description: "Physics-Informed Neural Network for Re=3000 Lid-Driven Cavity Flow"
+  seed: 42
+
+# =============================================================================
+# 網路架構配置
+# =============================================================================
+network:
+  main_net:
+    layers: 6                    # 主網路層數
+    hidden_size: 80              # 主網路神經元數
+    activation: "tanh"           # 激活函數: tanh | laaf | relu
+    initialization: "xavier"     # 權重初始化方法
+    first_layer_scale: 2.0       # 首層縮放係數
+    last_layer_scale: 0.5        # 末層縮放係數
+  
+  evm_net:
+    layers: 4                    # EVM網路層數  
+    hidden_size: 40              # EVM網路神經元數
+    activation: "tanh"           # EVM激活函數
+    output_activation: "abs_cap" # EVM輸出激活: abs_cap | softplus_cap
+    first_layer_scale: 1.2       # EVM首層縮放
+    last_layer_scale: 0.1        # EVM末層縮放
+  
+  # LAAF激活函數參數
+  laaf:
+    init_scale: 1.0              # LAAF初始縮放
+    max_scale: 20.0              # LAAF最大縮放
+    reg_lambda: 0.0              # LAAF正則化權重
+
+# =============================================================================
+# 物理參數配置
+# =============================================================================
+physics:
+  reynolds_number: 3000          # Reynolds數
+  
+  # 計算域配置
+  domain:
+    x_min: 0.0
+    x_max: 1.0
+    y_min: 0.0
+    y_max: 1.0
+  
+  # Entropy Viscosity Method參數
+  evm:
+    alpha_evm: 0.05              # EVM權重係數
+    beta: 20.0                   # 人工粘滯度係數
+  
+  # 損失函數權重
+  loss_weights:
+    boundary: 10.0               # 邊界條件權重
+    equation: 1.0                # 控制方程權重
+    supervision: 5.0             # 監督學習權重
+
+# =============================================================================
+# 訓練配置
+# =============================================================================
+training:
+  total_epochs: 1000000          # 總訓練步數
+  batch_size: null               # 全批次訓練
+  
+  # 多階段訓練配置
+  stages:
+    - name: "Stage_1_Initial"
+      epochs: 200000
+      alpha_evm: 0.05
+      learning_rate: 1e-3
+      scheduler: "Constant"
+    - name: "Stage_2_Reduce"  
+      epochs: 200000
+      alpha_evm: 0.01
+      learning_rate: 2e-4
+      scheduler: "Constant"
+    - name: "Stage_3_Finetune"
+      epochs: 200000
+      alpha_evm: 0.005
+      learning_rate: 4e-5
+      scheduler: "Constant"
+    - name: "Stage_4_Precision"
+      epochs: 200000
+      alpha_evm: 0.002
+      learning_rate: 1e-5
+      scheduler: "Constant"
+    - name: "Stage_5_Converge"
+      epochs: 200000
+      alpha_evm: 0.001
+      learning_rate: 2e-6
+      scheduler: "Constant"
+  
+  # 採樣配置
+  sampling:
+    n_interior: 120000           # 內部點數量
+    n_boundary: 4000             # 邊界點數量
+    strategy: "uniform"          # 採樣策略: uniform | adaptive
+    sort_by_boundary_distance: false
+    pde_distance_weighting: true # 啟用PDE距離權重
+    pde_distance_w_min: 0.2      # 距離權重下限
+    pde_distance_tau: 0.2        # 距離尺度參數
+  
+  # 優化器配置
+  optimization:
+    adam:
+      lr: 1e-3
+      weight_decay: 1e-5
+      betas: [0.9, 0.999]
+    
+    # L-BFGS混合優化
+    lbfgs:
+      enabled: true              # 啟用L-BFGS
+      enabled_in_distributed: false
+      enable_from_stage: 3       # 從第3階段開始啟用
+      max_iter: 50
+      history_size: 20
+      tolerance_grad: 1e-6
+      tolerance_change: 1e-8
+      line_search_fn: "strong_wolfe"
+      
+      # 觸發條件
+      trigger_window_per_stage: [5000, 7500, 10000]
+      min_improve_pct_per_stage: [0.02, 0.015, 0.01]
+      ema_gamma: 0.95
+      
+      # 梯度條件
+      use_simple_grad_check: true
+      grad_median_abs_thresh: 0.002
+      grad_relative_factor: 0.02
+      grad_cos_ema_thresh: 0.9
+      
+      # 物理條件
+      alpha_evm_threshold: 0.02
+      cap_ratio_threshold: 0.7
+      cooldown_steps: 5000
+      freeze_evm_during_lbfgs: true
+
+# =============================================================================
+# 監督學習配置
+# =============================================================================
+supervision:
+  enabled: true                  # 啟用監督學習
+  data_points: 1                 # 監督點數量
+  data_path: "data/reference/cavity_Re3000_256_Uniform.mat"
+  weight: 5.0                    # 監督權重
+  random_seed: 42
+
+# =============================================================================
+# 系統配置
+# =============================================================================
+system:
+  device: "auto"                 # 設備選擇: auto | cuda | cpu
+  precision: "float32"           # 數值精度
+  distributed: false             # 分散式訓練
+  num_workers: 4                 # 數據載入workers
+  
+  # 記憶體管理
+  memory_limit_gb: 14.0          # GPU記憶體限制
+  gradient_clip_norm: 1.0        # 梯度裁剪
+  memory_cleanup_freq: 100       # 記憶體清理頻率
+  
+  # P100相容性設定
+  p100_compatibility:
+    torch_compile_backend: "eager"
+    torchdynamo_disable: true
+  
+  # 日誌配置
+  logging:
+    level: "INFO"
+    log_freq: 100                # 日誌輸出頻率
+    tensorboard_enabled: true    # TensorBoard記錄
+    tensorboard_interval: 1000   # TB寫入間隔
+    timing_sync_interval: 1000   # GPU同步間隔
+  
+  # 檢查點配置
+  checkpoints:
+    save_freq: 10000             # 檢查點保存頻率
+    keep_best: 5                 # 保留最佳模型數量
+    auto_save: true              # 自動保存
+    checkpoint_before_lbfgs: true # L-BFGS前保存

@@ -1,22 +1,46 @@
-# PhysicsNeMo PINN Requirements
-# Core PhysicsNeMo packages
-nvidia-physicsnemo>=1.1.0
+# =========================================================================== 
+# LDC-PINNs Dependencies for PhysicsNeMo Framework
+# Physics-Informed Neural Networks for Lid-Driven Cavity Flow with PhysicsNeMo
+# ===========================================================================
+
+# Core PyTorch (Tesla P100 compatible)
+torch==2.6.0+cu126
+torchvision
+torchaudio
+
+# NVIDIA PhysicsNeMo Framework
+physicsnemo
+nvidia-physicsnemo.sym>=2.1.0
+
+# Scientific Computing
+numpy>=1.21.0
+scipy>=1.7.0
+matplotlib>=3.5.0
+
+# Configuration Management
+PyYAML>=6.0
 hydra-core>=1.3.0
 omegaconf>=2.3.0
 
-# Scientific computing
-torch>=2.0.0
-numpy>=1.21.0
-scipy>=1.7.0
-
-# Data handling
+# Data Processing
 h5py>=3.7.0
 
-# Visualization (optional)
-matplotlib>=3.5.0
-plotly>=5.0.0
+# Distributed Computing
+mpi4py
 
-# Development tools (optional)
+# Logging and Monitoring
+tensorboard>=2.8.0
+tqdm>=4.64.0
+mlflow
+
+# Development Tools (optional)
 pytest>=7.0.0
 black>=22.0.0
 isort>=5.10.0
+flake8>=4.0.0
+
+# Additional NeMo Dependencies
+Cython
+
+# For .mat file reading
+scipy>=1.7.0
