@@ -13,7 +13,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.optim import Adam, LBFGS
-from torch.optim import lr_scheduler
 from omegaconf import DictConfig
 from typing import Dict, Tuple, Optional, Any, List
 
@@ -21,14 +20,13 @@ from typing import Dict, Tuple, Optional, Any, List
 from physicsnemo.distributed import DistributedManager
 from physicsnemo.launch.logging import PythonLogger
 from physicsnemo.models.mlp.fully_connected import FullyConnected
-from physicsnemo.sym.eq.pdes.navier_stokes import NavierStokes
-from physicsnemo.sym.eq.phy_informer import PhysicsInformer
 from physicsnemo.sym.geometry.geometry_dataloader import GeometryDatapipe
 from physicsnemo.sym.geometry.primitives_2d import Rectangle
 
 # 本專案模組
-from src.models.activations import TSAActivation, get_activation_function, compute_activation_regularization
-from src.physics.equations import PhysicsEquations, EntropyViscosityMethod
+from src.models.activations import get_activation_function, compute_activation_regularization
+from src.physics.equations import EntropyViscosityMethod
+from src.physics.nemo_sym import NemoSymEquations
 
 
 class EntropyResidualNetwork(nn.Module):
@@ -243,25 +241,40 @@ class DualNetworkPINNSolver:
         self.config = config
         self.device = device
         
-        # 建立主網路 (u, v, p)
-        self.main_network = AdvancedFullyConnectedNetwork(
-            input_dim=2,
-            output_dim=3,  # u, v, p
-            hidden_layers=config.model.main_network.num_layers,
-            hidden_size=config.model.main_network.layer_size,
-            activation_config=config.model.get('advanced_activation', None)
-        ).to(device)
+        # 建立主/副網路：優先使用PhysicsNeMo FullyConnected，失敗則回退到本地網路
+        try:
+            self.main_network = FullyConnected(
+                in_features=2,
+                out_features=3,
+                num_layers=config.model.main_network.num_layers,
+                layer_size=config.model.main_network.layer_size,
+            ).to(device)
+        except Exception:
+            self.main_network = AdvancedFullyConnectedNetwork(
+                input_dim=2,
+                output_dim=3,
+                hidden_layers=config.model.main_network.num_layers,
+                hidden_size=config.model.main_network.layer_size,
+                activation_config=config.model.get('advanced_activation', None)
+            ).to(device)
+
+        try:
+            self.entropy_network = FullyConnected(
+                in_features=2,
+                out_features=1,
+                num_layers=config.model.entropy_network.num_layers,
+                layer_size=config.model.entropy_network.layer_size,
+            ).to(device)
+        except Exception:
+            self.entropy_network = EntropyResidualNetwork(
+                input_dim=2,
+                hidden_layers=config.model.entropy_network.num_layers,
+                hidden_size=config.model.entropy_network.layer_size,
+                activation_config=config.model.get('advanced_activation', None)
+            ).to(device)
         
-        # 建立副網路 (entropy residual)
-        self.entropy_network = EntropyResidualNetwork(
-            input_dim=2,
-            hidden_layers=config.model.entropy_network.num_layers,
-            hidden_size=config.model.entropy_network.layer_size,
-            activation_config=config.model.get('advanced_activation', None)
-        ).to(device)
-        
-        # 物理方程式
-        self.physics_equations = PhysicsEquations(
+        # 物理方程式：優先使用PhysicsNeMo-Sym封裝（含Informer+EVM），避免破壞原有資料流
+        self.physics_equations = NemoSymEquations(
             reynolds_number=config.physics.Re,
             alpha_evm=config.physics.alpha_evm,
             beta=config.physics.get('beta', 1.0)
@@ -310,7 +323,7 @@ class DualNetworkPINNSolver:
     
     def compute_physics_loss(self, coords: torch.Tensor) -> Dict[str, torch.Tensor]:
         """計算物理損失"""
-        x, y = coords[:, 0:1], coords[:, 1:1]
+        x, y = coords[:, 0:1], coords[:, 1:2]
         x.requires_grad_(True)
         y.requires_grad_(True)
         
@@ -322,9 +335,7 @@ class DualNetworkPINNSolver:
         e_raw = self.entropy_network(coords)
         
         # 計算物理方程殘差
-        eq1, eq2, eq3, eq4 = self.physics_equations.compute_physics_residuals(
-            x, y, u, v, p, e_raw
-        )
+        eq1, eq2, eq3, eq4 = self.physics_equations.compute_residuals(x, y, u, v, p, e_raw)
         
         # 計算損失
         losses = {

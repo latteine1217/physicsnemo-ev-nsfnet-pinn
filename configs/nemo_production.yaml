@@ -1,25 +1,21 @@
 # =============================================================================
-# LDC-PINNs 生產環境配置
-# 基於ev-NSFnet/configs/production.yaml優化
+# LDC-PINNs 生產環境配置（PhysicsNeMo-Sym 開啟）
+# 在保留原生 PyTorch 流程下，透過 use_nemo_sym 切換至 PhysicsNeMo-Sym 殘差
 # =============================================================================
 
 experiment:
-  name: "LDC_PINN_Re3000_Production"
-  description: "高精度Physics-Informed Neural Network for Re=3000 Lid-Driven Cavity Flow"
+  name: "LDC_PINN_Re3000_NemoSym"
+  description: "Production config using PhysicsNeMo-Sym residuals via PINNSolver"
   seed: 42
 
-# =============================================================================
-# 網路架構配置
-# =============================================================================
 network:
   main_net:
     layers: 6
     hidden_size: 80
-    activation: "laaf"           # 啟用LAAF激活函數
+    activation: "laaf"
     initialization: "xavier"
-    first_layer_scale: 1.0       # LAAF時放緩首層縮放
+    first_layer_scale: 1.0
     last_layer_scale: 0.5
-  
   evm_net:
     layers: 4
     hidden_size: 40
@@ -27,42 +23,30 @@ network:
     output_activation: "abs_cap"
     first_layer_scale: 1.0
     last_layer_scale: 0.5
-  
   laaf:
     init_scale: 1.0
     max_scale: 20.0
-    reg_lambda: 1.0e-4           # LAAF輕度正則
+    reg_lambda: 1.0e-4
 
-# =============================================================================
-# 物理參數配置
-# =============================================================================
 physics:
   reynolds_number: 3000
-  use_nemo_sym: false            # 可切換至PhysicsNeMo-Sym殘差
-  
+  use_nemo_sym: true  # 啟用 PhysicsNeMo-Sym 殘差
   domain:
     x_min: 0.0
     x_max: 1.0
     y_min: 0.0
     y_max: 1.0
-  
   evm:
     alpha_evm: 0.05
     beta: 20.0
-  
   loss_weights:
     boundary: 10.0
     equation: 1.0
     supervision: 5.0
 
-# =============================================================================
-# 訓練配置 - 5階段高精度訓練
-# =============================================================================
 training:
   total_epochs: 1100000
-  batch_size: null               # 全批次訓練
-  
-  # 採樣配置
+  batch_size: null
   sampling:
     n_interior: 120000
     n_boundary: 4000
@@ -71,8 +55,6 @@ training:
     pde_distance_weighting: true
     pde_distance_w_min: 0.2
     pde_distance_tau: 0.2
-  
-  # 5階段訓練策略
   stages:
     - name: "Stage_1_Initial"
       epochs: 200000
@@ -81,7 +63,7 @@ training:
       scheduler: "Constant"
       weight_decay: 1.0e-5
     - name: "Stage_2_Reduce"
-      epochs: 200000  
+      epochs: 200000
       alpha_evm: 0.01
       learning_rate: 2e-4
       scheduler: "Constant"
@@ -104,38 +86,25 @@ training:
       learning_rate: 2e-6
       scheduler: "Constant"
       weight_decay: 0.0
-  
-  # 優化器配置
   optimization:
     adam:
       lr: 1e-3
       betas: [0.9, 0.999]
-    
-    # L-BFGS進階配置
     lbfgs:
       enabled: true
       enabled_in_distributed: false
       enable_from_stage: 3
-      
-      # 分階段觸發條件
       trigger_window_per_stage: [5000, 7500, 10000]
       min_improve_pct_per_stage: [0.02, 0.015, 0.01]
       ema_gamma: 0.95
-      
-      # 梯度條件
       use_simple_grad_check: true
       grad_median_abs_thresh: 0.002
       grad_relative_factor: 0.02
       grad_cos_ema_thresh: 0.9
-      
-      # 物理條件
       alpha_evm_threshold: 0.02
       cap_ratio_threshold: 0.7
-      
       cooldown_steps: 5000
       freeze_evm_during_lbfgs: true
-      
-      # L-BFGS參數
       max_outer_steps: 50
       timeout_seconds: 300
       max_iter: 10
@@ -147,9 +116,6 @@ training:
       early_stop_min_delta: 1e-4
       checkpoint_before_lbfgs: true
 
-# =============================================================================
-# 監督學習配置
-# =============================================================================
 supervision:
   enabled: true
   data_points: 1
@@ -157,28 +123,19 @@ supervision:
   weight: 5.0
   random_seed: 42
 
-# =============================================================================
-# 系統配置
-# =============================================================================
 system:
   device: "auto"
   precision: "float32"
   distributed: false
   num_workers: 4
-  
-  # Tesla P100專用設定
   p100_compatibility:
     torch_compile_backend: "eager"
     torchdynamo_disable: true
-  
-  # 性能配置
   memory_limit_gb: 14.0
   gradient_clip_norm: 1.0
   memory_cleanup_freq: 100
   epoch_times_limit: 1000
   ddp_broadcast_buffers: false
-  
-  # 日誌配置
   logging:
     level: "INFO"
     log_freq: 100
@@ -186,9 +143,8 @@ system:
     tensorboard_enabled: true
     tensorboard_interval: 1000
     timing_sync_interval: 1000
-  
-  # 檢查點配置
   checkpoints:
     save_freq: 10000
     keep_best: 5
     auto_save: true
+

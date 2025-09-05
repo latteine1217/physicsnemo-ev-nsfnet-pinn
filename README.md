@@ -42,17 +42,23 @@ pip install -r requirements.txt
 cp ev-NSFnet/data/*.mat data/reference/
 ```
 
-### 基本使用
+### 基本使用（預設：PhysicsNeMo 完整管線）
 
 ```bash
-# 使用預設配置訓練
-python scripts/train.py --config configs/default.yaml
+# 使用PhysicsNeMo進階入口（單機，可由Hydra參數覆寫）
+python train_physicsnemo_advanced.py --config configs/ldc_pinn_advanced.yaml
 
-# 使用生產環境配置 (Re=3000)
-python scripts/train.py --config configs/production.yaml
+# SLURM + torchrun（2x P100）
+sbatch scripts/slurm/train.sh
 
-# Re=5000實驗
-python scripts/train.py --config configs/experiments/re5000.yaml
+# P100 相容性檢查
+python test_p100_compatibility.py
+```
+
+若需要原生 PyTorch 流程（但使用 PhysicsNeMo-Sym 殘差），可改用：
+
+```bash
+python scripts/train.py --config configs/nemo_production.yaml
 ```
 
 ## 📁 專案結構

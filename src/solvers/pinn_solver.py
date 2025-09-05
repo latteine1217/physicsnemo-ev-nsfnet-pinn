@@ -106,12 +106,24 @@ class PINNSolver:
         # 初始化神經網路
         self._initialize_networks()
         
-        # 初始化物理方程
-        self.physics_equations = PhysicsEquations(
-            reynolds_number=self.Re,
-            alpha_evm=self.alpha_evm,
-            beta=self.beta
-        )
+        # 初始化物理方程（可選切換為PhysicsNeMo-Sym）
+        use_nemo_sym = getattr(self.config.physics, 'use_nemo_sym', False)
+        if use_nemo_sym:
+            # 延遲匯入，避免未安裝PhysicsNeMo時影響純PyTorch流程
+            from ..physics.nemo_sym import NemoSymEquations
+            self.physics_equations = NemoSymEquations(
+                reynolds_number=self.Re,
+                alpha_evm=self.alpha_evm,
+                beta=self.beta
+            )
+            self.logger.info("物理殘差: 使用 PhysicsNeMo-Sym (NavierStokes + PhysicsInformer + EVM)")
+        else:
+            self.physics_equations = PhysicsEquations(
+                reynolds_number=self.Re,
+                alpha_evm=self.alpha_evm,
+                beta=self.beta
+            )
+            self.logger.info("物理殘差: 使用本地PyTorch實作")
         
         # 訓練數據（將在load_training_data中設定）
         self.x_f = self.y_f = None  # 方程點
@@ -350,9 +362,15 @@ class PINNSolver:
         # 方程損失
         u_pred_f, v_pred_f, p_pred_f, e_pred_f = self.neural_net_u(self.x_f, self.y_f)
         
-        eq1, eq2, eq3, eq4 = self.physics_equations.compute_physics_residuals(
-            self.x_f, self.y_f, u_pred_f, v_pred_f, p_pred_f, e_pred_f
-        )
+        # 支援Nemo-Sym與本地實作的統一呼叫
+        if hasattr(self.physics_equations, 'compute_residuals'):
+            eq1, eq2, eq3, eq4 = self.physics_equations.compute_residuals(
+                self.x_f, self.y_f, u_pred_f, v_pred_f, p_pred_f, e_pred_f
+            )
+        else:
+            eq1, eq2, eq3, eq4 = self.physics_equations.compute_physics_residuals(
+                self.x_f, self.y_f, u_pred_f, v_pred_f, p_pred_f, e_pred_f
+            )
         
         # 各方程損失
         self.loss_eq1 = torch.mean(torch.square(eq1))

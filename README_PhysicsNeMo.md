@@ -16,9 +16,9 @@
 
 ```
 .
-├── train_physicsnemo.py          # 主訓練腳本 (PhysicsNeMo實現)
+├── train_physicsnemo_advanced.py # 主訓練腳本 (PhysicsNeMo實現)
 ├── configs/
-│   └── ldc_pinn.yaml            # Hydra配置文件
+│   └── ldc_pinn_advanced.yaml   # Hydra配置文件
 ├── requirements.txt             # PhysicsNeMo依賴
 ├── outputs/                     # 訓練輸出和可視化結果
 └── ev-NSFnet/                   # 原始PyTorch參考實現
@@ -52,11 +52,11 @@ pip install "nvidia-physicsnemo.sym>=2.1.0" --no-build-isolation
 ### 2. 訓練模型
 
 ```bash
-# 使用PhysicsNeMo框架訓練
-python train_physicsnemo.py
+# 使用PhysicsNeMo框架訓練（進階入口）
+python train_physicsnemo_advanced.py --config configs/ldc_pinn_advanced.yaml
 
-# 指定不同的配置
-python train_physicsnemo.py physics.Re=5000 training.max_epochs=20000
+# 指定不同的配置（Hydra覆寫）
+python train_physicsnemo_advanced.py --config configs/ldc_pinn_advanced.yaml physics.Re=5000 training.max_epochs=20000
 ```
 
 ### 3. 結果查看

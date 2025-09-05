@@ -41,6 +41,7 @@ class NetworkConfig:
 class PhysicsConfig:
     """物理參數配置"""
     reynolds_number: float = 3000.0
+    use_nemo_sym: bool = False  # 是否改用PhysicsNeMo-Sym殘差計算
     
     # 計算域
     domain_x_min: float = 0.0

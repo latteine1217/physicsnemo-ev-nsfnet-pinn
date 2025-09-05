@@ -39,6 +39,7 @@ network:
 # =============================================================================
 physics:
   reynolds_number: 3000          # Reynolds數
+  use_nemo_sym: false            # 是否使用PhysicsNeMo-Sym殘差（預設關閉）
   
   # 計算域配置
   domain:
